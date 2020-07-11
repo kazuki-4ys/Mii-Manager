@@ -1,0 +1,6 @@
+--atlas -f rgba8888 -z auto
+top.png
+allow.png
+folder.png
+mii.png
+unknown.png
