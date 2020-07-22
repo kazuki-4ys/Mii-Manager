@@ -189,7 +189,7 @@ int miiFileWrite(mii *Miis,int index,const char *dir,char *msgBuf){
     f = fopen(path,"wb");
 	if(!f){
 		msg = "Error:fopen";
-		memcpy(msgBuf,msg,sizeof(msg));
+		memcpy(msgBuf,msg,strlen(msg));
 		return -1;
 	}
 	fwrite((Miis[index]).rawData,sizeof(unsigned char),MII_FILE_SIZE,f);

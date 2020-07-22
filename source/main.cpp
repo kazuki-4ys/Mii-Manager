@@ -149,7 +149,6 @@ int main()
 			}
 			page = index / MAX_SHOW_FILE_NUM;
 			C2D_TextBufClear(g_dynamicBuf);
-			C2D_TextBufClear(g_footer);
 			for(i = 0;i < MAX_SHOW_FILE_NUM;i++){
 			    if(page * MAX_SHOW_FILE_NUM + i < fm.entries.size()){
                     C2D_TextParse(&entriesString[i], g_dynamicBuf,fm.entries[page * MAX_SHOW_FILE_NUM + i].name.c_str());
@@ -174,6 +173,7 @@ int main()
 				C2D_DrawSprite(&allowSprite);
 			}
 		}
+		C2D_TextBufClear(g_footer);
 		C2D_TextParse(&footer, g_footer,doneMsg);
 		C2D_TextOptimize(&footer);
 		C2D_DrawText(&footer,0,8.0f,202.0f,0.5f, 0.5f, 0.5f);
