@@ -4,35 +4,30 @@ const unsigned int TARGET_ID = 0xf000000b;
 char TARGET_PATH[] = "/CFL_DB.dat";
 char DAT_MAGIC[] = "CFOG";
 
-int readMiis(mii*dest,char *msgBuf){
-	char* msg;
+int readMiis(mii*dest,string*msg){
 	int miiNum = 0,miiSlot = 0;
 	Handle fh;
 	u32 actSize,fileSize;
 	char headBuf[5] = {};
 	Archive arc(TARGET_ID);
 	if(!arc.valid){
-		msg = "Error:Archive::Archive";
-		memcpy(msgBuf,msg,strlen(msg));
+		*msg = "Error:Archive::Archive";
 		return -1;
 	}
     if(arc.Open(&fh,TARGET_PATH,FS_OPEN_READ)){
-		msg = "Error:Archive::Open";
-		memcpy(msgBuf,msg,strlen(msg));
+		*msg = "Error:Archive::Open";
 		return -1;
 	}
 	fileSize = arc.GetFileSize(fh);
 	if(fileSize < DAT_MIN_SIZE){
-		msg = "Error:CFL_DB.dat is too small";
-		memcpy(msgBuf,msg,strlen(msg));
+		*msg = "Error:CFL_DB.dat is too small";
 		arc.Close(fh);
 		return -1;
 	}
 	unsigned char *DatFileBuf; //CFL_DB.datを格納するバッファ
 	DatFileBuf = (unsigned char*)calloc(fileSize,sizeof(unsigned char));
 	if(!DatFileBuf){
-		msg = "Error:calloc";
-		memcpy(msgBuf,msg,strlen(msg));
+		*msg = "Error:calloc";
 		arc.Close(fh);
 		return -1;
 	}
@@ -40,8 +35,7 @@ int readMiis(mii*dest,char *msgBuf){
 	arc.Close(fh);
 	memcpy(headBuf,DatFileBuf,4);
     if(strcmp(headBuf,DAT_MAGIC)){
-        msg = "Error:magic doesn't match";
-		memcpy(msgBuf,msg,strlen(msg));
+        *msg = "Error:magic doesn't match";
 		free(DatFileBuf);
 		return -1;
 	}
@@ -51,10 +45,7 @@ int readMiis(mii*dest,char *msgBuf){
 		if(miiRawDataCheck((dest + miiNum)->rawData))continue;
 		miiNum++;
 	}
-	if(miiNum == 0){
-		msg = "Error:There is NO Miis";
-		memcpy(msgBuf,msg,strlen(msg));
-	}
+	if(miiNum == 0)*msg = "Error:There is NO Miis";
 	allGetMiiInfo(dest,miiNum);
 	return miiNum;
 }
@@ -67,9 +58,8 @@ int miiRawDataCheck(unsigned char*src){
 	return -1;
 }
 
-int installMii(const char *fn,bool installAsPersonal,char *msgBuf){
+string installMii(const char *fn,bool installAsPersonal){
 	bool MiiShownSlot[MAX_MII_NUM];
-	char* msg;
 	unsigned short crc;
 	unsigned char MiiFileBuf[MII_FILE_SIZE];
 	unsigned char tmpMiiID[4];
@@ -80,64 +70,40 @@ int installMii(const char *fn,bool installAsPersonal,char *msgBuf){
 	char headBuf[5] = {};
 	Archive arc(TARGET_ID);
     fd = open(fn,O_RDONLY);
-	if(fd < 0){
-		msg = "Error:open";
-        memcpy(msgBuf,msg,strlen(msg));
-		return -1;
-	}
+	if(fd < 0)return "Error:open";
 	if((int)getFileSize(fd) != MII_FILE_SIZE){
-		msg = "Error:invalid file";
-        memcpy(msgBuf,msg,strlen(msg));
 		close(fd);
-		return -1;
+		return "Error:invalid file";
 	}
     f = fdopen(fd,"rb");
 	if(!f){
-		msg = "Error:fdopen";
-        memcpy(msgBuf,msg,strlen(msg));
 		close(fd);
-		return -1;
+		return "Error:fdopen";
 	}
 	fread(MiiFileBuf,sizeof(unsigned char),MII_FILE_SIZE,f);
+	fclose(f);
 	if(MiiFileBuf[0] != 3 || MiiFileBuf[0x16] != 0 || MiiFileBuf[0x17] != 0){
-        msg = "Error:invalid file";
-        memcpy(msgBuf,msg,strlen(msg));
-		fclose(f);
-		return -1;
+		return "Error:invalid file";
 	}
-	if(!arc.valid){
-		msg = "Error:Archive::Archive";
-		memcpy(msgBuf,msg,strlen(msg));
-		return -1;
-	}
-    if(arc.Open(&fh,TARGET_PATH,FS_OPEN_WRITE)){
-		msg = "Error:Archive::Open";
-		memcpy(msgBuf,msg,strlen(msg));
-		return -1;
-	}
+	if(!arc.valid)return "Error:Archive::Archive";
+    if(arc.Open(&fh,TARGET_PATH,FS_OPEN_WRITE))return "Error:Archive::Open";
 	fileSize = arc.GetFileSize(fh);
 	if(fileSize < DAT_MIN_SIZE){
-		msg = "Error:CFL_DB.dat is too small";
-		memcpy(msgBuf,msg,strlen(msg));
 		arc.Close(fh);
-		return -1;
+		return "Error:CFL_DB.dat is too small";
 	}
 	unsigned char *DatFileBuf; //CFL_DB.datを格納するバッファ
 	DatFileBuf = (unsigned char*)calloc(fileSize,sizeof(unsigned char));
 	if(!DatFileBuf){
-		msg = "Error:calloc";
-		memcpy(msgBuf,msg,strlen(msg));
 		arc.Close(fh);
-		return -1;
+		return "Error:calloc";
 	}
 	arc.Read(fh,&actSize,0,DatFileBuf,fileSize);
 	memcpy(headBuf,DatFileBuf,4);
     if(strcmp(headBuf,DAT_MAGIC)){
-        msg = "Error:magic doesn't match";
-		memcpy(msgBuf,msg,strlen(msg));
 		arc.Close(fh);
 		free(DatFileBuf);
-		return -1;
+		return "Error:magic doesn't match";
 	}
 	while(miiSlot < MAX_MII_NUM){
         if(miiRawDataCheck(DatFileBuf + 8 + miiSlot * MII_FILE_SIZE)){
@@ -151,11 +117,9 @@ int installMii(const char *fn,bool installAsPersonal,char *msgBuf){
 		miiSlot++;
 	}
 	if(miiInstallSlot == -1){
-		msg = "Error:Mii is full";
-		memcpy(msgBuf,msg,strlen(msg));
 		free(DatFileBuf);
 		arc.Close(fh);
-		return -1;
+		return "Error:Mii is full";
 	}
 	curMiiShownSlot = 0;
 	while(curMiiShownSlot < MAX_MII_NUM){
@@ -174,27 +138,25 @@ int installMii(const char *fn,bool installAsPersonal,char *msgBuf){
     DatFileBuf[DAT_MIN_SIZE - 2] = (unsigned char)(crc >> 8);
 	DatFileBuf[DAT_MIN_SIZE - 1] = (unsigned char)(crc & 0xff);
 	arc.Write(fh,&actSize,0LL,DatFileBuf,fileSize);
-    msg = "Mii was successfully installed";
-	memcpy(msgBuf,msg,strlen(msg));
 	free(DatFileBuf);
 	arc.Close(fh);
-	return 0;
+    return "Mii was successfully installed";
 }
 
-int miiFileWrite(mii *Miis,int index,const char *dir,char *msgBuf){
-	char path[128] = {};
-	char *msg;
+int miiFileWrite(mii *Miis,int index,string dir,string*msg){
+	char path[16] = {};
+	path[15] = 0;
 	FILE *f;
-	sprintf(path,"%s/%08d.3dsmii",dir,index + 1);
-    f = fopen(path,"wb");
+	sprintf(path,"%08d.3dsmii",index + 1);
+	string fullPath = dir + string(path);
+    f = fopen(fullPath.c_str(),"wb");
 	if(!f){
-		msg = "Error:fopen";
-		memcpy(msgBuf,msg,strlen(msg));
+		*msg = "Error:fopen";
 		return -1;
 	}
 	fwrite((Miis[index]).rawData,sizeof(unsigned char),MII_FILE_SIZE,f);
 	fclose(f);
-	sprintf(msgBuf,"%s was dumped to \n%s",Miis[index].name,path);
+	*msg = string(Miis[index].name) + " was dumped to\n" + fullPath;
 	return 0;
 }
 
@@ -259,10 +221,10 @@ long getFileSize(int fd){
 	return stbuf.st_size;
 }
 
-int dumpMii(string dir,char *msgBuf){
+int dumpMii(string dir,string *msg){
     mii Miis[MAX_MII_NUM];
 	int miiSlot;
-	int miiNum =  readMiis(Miis,msgBuf);
+	int miiNum =  readMiis(Miis,msg);
 	if(miiNum < 1){
 		return -1;
 	}
@@ -270,6 +232,6 @@ int dumpMii(string dir,char *msgBuf){
 	if(miiSlot == -1){
         return 1;
 	}
-	if(dir[dir.size() - 1] == '/')dir.pop_back();
-	return miiFileWrite(Miis,miiSlot,dir.c_str(),msgBuf);
+	if(dir[dir.size() - 1] != '/')dir += "/";
+	return miiFileWrite(Miis,miiSlot,dir,msg);
 }

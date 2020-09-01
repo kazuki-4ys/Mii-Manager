@@ -26,15 +26,15 @@ typedef struct {
 	int shownSlot;
 } mii;
 
-int readMiis(mii*,char*);
+int readMiis(mii*,string*);
 int miiRawDataCheck(unsigned char*);
-int installMii(const char*,bool,char*);
-int miiFileWrite(mii*,int,const char*,char*);
+string installMii(const char*,bool);
+int miiFileWrite(mii*,int,string,string*);
 void getMiiInfo(mii*);
 void allGetMiiInfo(mii*,int);
 int selectMii(mii*,int);
 long getFileSize(int);
-int dumpMii(string,char*);
+int dumpMii(string,string*);
 unsigned short getCrc(unsigned char*,int);
 
 #endif //_MII_H_
